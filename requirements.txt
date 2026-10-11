@@ -5,4 +5,4 @@ numpy
 matplotlib
 gtts
 audio-recorder-streamlit
-PIL
+pillow
