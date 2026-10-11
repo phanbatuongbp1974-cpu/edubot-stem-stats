@@ -1,6 +1,8 @@
 streamlit
 google-genai
-pillow
 pandas
 numpy
 matplotlib
+gtts
+audio-recorder-streamlit
+PIL
