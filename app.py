@@ -66,27 +66,24 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# 2. HỆ THỐNG XOAY VÒNG 5 API KEY THÔNG MINH
+# 2. HỆ THỐNG XOAY VÒNG API KEY (HÃY THAY KEY THẬT CỦA BẠN VÀO ĐÂY)
 # =====================================================================
 if "key_index" not in st.session_state:
     st.session_state.key_index = 0
 
 API_KEYS_POOL = [
-    "AQ.Ab8RN6LAu14G0gb8ntVPkeG2tbU2yR8dEDu3F63AIGznFGcgcA",
-    "AQ.Ab8RN6IW7njatVnaw7Ml4mkM1xG1KEfnJ5cxM-VNqJMSdQsXIQ",
-    "AQ.Ab8RN6LO8xRuz1IesGqR48Y10wTW02AtovsmfgV_o8-y97JSqQ",
-    "AQ.Ab8RN6KFz4jALbfPCmM0jkggHl2t7HeZpvRdbeiRzW0MKwQ4aA",
-    "AQ.Ab8RN6JJfSyC8WB1C8c8IgA5tFxDoLgeVQz08g26r_s0MFzXMA"
+    "AQ.Ab8RN6LP6hdiozw6LzRvNQRw7vVYpCAIa6ewtk0vWXo4B7iZmQ",
+    "AQ.Ab8RN6IbR-pyp_EYpTXTqRg_-HtrNnoHteas09wK0Pjx3Gkoxw",
+    "AQ.Ab8RN6IV7Fqx5P-8SeeRBFAfXc9X4JlMhrjhMZyJeA7hX32atQ",
+    "AQ.Ab8RN6LeHaGDuReA4rqIW3vtbEAC_8dD2unToWQ5eomdfX-CQg",
+    "AQ.Ab8RN6L8-AgD-PGw-j1texwdyeJ9xPhHcWlcZyh6MVW6Mfalzg"
+
 ]
 
 try:
     if "GEMINI_API_KEY_1" in st.secrets:
         API_KEYS_POOL = [
             st.secrets.get("GEMINI_API_KEY_1", API_KEYS_POOL[0]),
-            st.secrets.get("GEMINI_API_KEY_2", API_KEYS_POOL[1]),
-            st.secrets.get("GEMINI_API_KEY_3", API_KEYS_POOL[2]),
-            st.secrets.get("GEMINI_API_KEY_4", API_KEYS_POOL[3]),
-            st.secrets.get("GEMINI_API_KEY_5", API_KEYS_POOL[4]),
         ]
 except Exception:
     pass
@@ -94,12 +91,6 @@ except Exception:
 def get_active_client():
     current_key = API_KEYS_POOL[st.session_state.key_index]
     return genai.Client(api_key=current_key)
-
-def rotate_to_next_key():
-    st.session_state.key_index = (st.session_state.key_index + 1) % len(API_KEYS_POOL)
-    st.warning(f"🔄 Đã tự động chuyển sang API Key dự phòng số {st.session_state.key_index + 1} do hết hạn mức!")
-    st.session_state.genai_client = get_active_client()
-    st.session_state.pop("chat_session", None)
 
 if "genai_client" not in st.session_state:
     st.session_state.genai_client = get_active_client()
@@ -201,9 +192,21 @@ QUY TẮC SƯ PHẠM BẮT BUỘC:
 4. Luôn kết thúc câu bằng 1 câu hỏi gợi mở để người học tự hoàn thành bài tập.
 """
 
+def rotate_to_next_key():
+    st.session_state.key_index = (st.session_state.key_index + 1) % len(API_KEYS_POOL)
+    st.warning(f"🔄 Đã tự động chuyển sang API Key dự phòng số {st.session_state.key_index + 1} do hết hạn mức!")
+    st.session_state.genai_client = get_active_client()
+    st.session_state.chat_session = st.session_state.genai_client.chats.create(
+        model="gemini-3.8-flash",
+        config=types.GenerateContentConfig(
+            system_instruction=system_instruction,
+            temperature=0.3
+        )
+    )
+
 if "chat_session" not in st.session_state:
-    st.session_state.chat_session = client.chats.create(
-        model="gemini-2.5-flash",
+    st.session_state.chat_session = st.session_state.genai_client.chats.create(
+        model="gemini-3.8-flash",
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
             temperature=0.3
@@ -286,7 +289,7 @@ with tab_chat:
                 if success:
                     st.session_state.messages.append({"role": "assistant", "content": bot_reply})
                 else:
-                    st.error("⚠️ Tất cả 5 API Key đều đã vượt quá hạn mức hoặc gặp lỗi xác thực. Vui lòng thử lại sau!")
+                    st.error("⚠️ Tất cả API Key đều đã vượt quá hạn mức hoặc gặp lỗi xác thực. Vui lòng thử lại sau!")
             except Exception as e:
                 st.error(f"Lỗi kết nối AI: {e}")
 
@@ -317,8 +320,8 @@ with tab_stat_viz:
                 st.pyplot(fig)
                 
                 with st.spinner("AI đang phân tích ý nghĩa thống kê..."):
-                    ai_stat_analysis = client.models.generate_content(
-                        model='gemini-2.5-flash',
+                    ai_stat_analysis = st.session_state.genai_client.models.generate_content(
+                        model='gemini-3.8-flash',
                         contents=f"Dữ liệu: {data_list}. Mean={mean_val:.2f}, Median={median_val:.2f}, Std={std_val:.2f}. Nhận xét khoa học."
                     )
                     st.markdown("### 🤖 Nhận định chuyên gia:")
@@ -334,8 +337,8 @@ with tab_analytics:
         if st.button("📊 Phân Tích Năng Lực Ngay", use_container_width=True):
             with st.spinner("Đang phân tích dữ liệu..."):
                 chat_history_summary = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
-                analysis_res = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                analysis_res = st.session_state.genai_client.models.generate_content(
+                    model='gemini-3.8-flash',
                     contents=f"Phân tích điểm mạnh/yếu môn {mon_hoc} dựa trên lịch sử: {chat_history_summary}"
                 )
                 st.markdown(f"<div class='analytics-box'>{analysis_res.text}</div>", unsafe_allow_html=True)
@@ -350,8 +353,8 @@ with tab_time:
             days_left = (exam_date - datetime.date.today()).days
             st.markdown(f"<div class='countdown-card'><h2>🚨 Còn lại {days_left} ngày</h2><p><b>{exam_name}</b></p></div>", unsafe_allow_html=True)
             with st.spinner("Đang thiết lập lịch ôn tập..."):
-                schedule_res = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                schedule_res = st.session_state.genai_client.models.generate_content(
+                    model='gemini-3.8-flash',
                     contents=f"Thiết kế lịch ôn Spaced Repetition môn {mon_hoc} trong {days_left} ngày."
                 )
                 st.markdown(schedule_res.text)
@@ -364,10 +367,10 @@ with tab_research:
     if st.button("🔎 Truy Vấn Google Search"):
         if research_query:
             with st.spinner("Đang tìm kiếm thông tin..."):
-                grounding_res = client.models.generate_content(
-                    model='gemini-2.5-flash',
+                grounding_res = st.session_state.genai_client.models.generate_content(
+                    model='gemini-3.8-flash',
                     contents=f"Tìm kiếm thông tin uy tín về: '{research_query}' cho môn {mon_hoc}.",
-                    config=types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())])
+                    config=types.GenerateContentConfig(tools=[{"google_search": {}}])
                 )
                 st.markdown("### 🌐 Kết quả:")
                 st.markdown(grounding_res.text)
