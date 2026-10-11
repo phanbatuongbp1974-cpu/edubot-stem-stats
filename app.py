@@ -8,57 +8,25 @@ import datetime
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from gtts import gTTS
+import io
+from audio_recorder_streamlit import audio_recorder
 
 # =====================================================================
-# 1. CẤU HÌNH GIAO DIỆN WEB & CSS HỖ TRỢ TỰ ĐỘNG LIGHT / DARK MODE
+# 1. CẤU HÌNH GIAO DIỆN WEB & CSS
 # =====================================================================
 st.set_page_config(page_title="EduBot STEM & Statistics", page_icon="🎓", layout="wide")
 
 st.markdown("""
 <style>
-    .stChatMessage { 
-        border-radius: 16px; 
-        padding: 16px; 
-        margin-bottom: 14px; 
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-        border: 1px solid rgba(128, 128, 128, 0.2); 
-    }
-    .stButton>button { 
-        border-radius: 12px; 
-        font-weight: 600; 
-        width: 100%; 
-        border: 1px solid rgba(128, 128, 128, 0.3); 
-        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-        padding: 10px 15px;
-    }
-    .stButton>button:hover { 
-        border-color: #2563eb; 
-        color: #2563eb !important; 
-        box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.15);
-        transform: translateY(-1px);
-    }
-    .metric-card { 
-        border: 1px solid rgba(128, 128, 128, 0.2); 
-        padding: 16px; 
-        border-radius: 16px; 
-        text-align: center;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-    }
+    .stChatMessage { border-radius: 16px; padding: 16px; margin-bottom: 14px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border: 1px solid rgba(128, 128, 128, 0.2); }
+    .stButton>button { border-radius: 12px; font-weight: 600; width: 100%; border: 1px solid rgba(128, 128, 128, 0.3); transition: all 0.2s ease; padding: 10px 15px; }
+    .stButton>button:hover { border-color: #2563eb; color: #2563eb !important; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.15); transform: translateY(-1px); }
+    .metric-card { border: 1px solid rgba(128, 128, 128, 0.2); padding: 16px; border-radius: 16px; text-align: center; }
     .metric-val { font-size: 28px; font-weight: 800; color: #2563eb; }
     .metric-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; opacity: 0.8; }
-    .analytics-box { 
-        border-left: 5px solid #2563eb; 
-        border-top: 1px solid rgba(128, 128, 128, 0.2);
-        border-right: 1px solid rgba(128, 128, 128, 0.2);
-        border-bottom: 1px solid rgba(128, 128, 128, 0.2);
-        padding: 20px; border-radius: 4px 16px 16px 4px; margin-bottom: 15px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    }
-    .countdown-card { 
-        background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); 
-        color: white !important; padding: 24px; border-radius: 16px; text-align: center; margin-bottom: 20px;
-        box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.25);
-    }
+    .analytics-box { border-left: 5px solid #2563eb; border: 1px solid rgba(128, 128, 128, 0.2); padding: 20px; border-radius: 4px 16px 16px 4px; margin-bottom: 15px; }
+    .countdown-card { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white !important; padding: 24px; border-radius: 16px; text-align: center; margin-bottom: 20px; }
     .countdown-card h2 { color: white !important; margin: 0; font-weight: 800;}
     .countdown-card p { color: #bfdbfe !important; margin-top: 8px; font-size: 14px;}
     h1, h2, h3, h4 { font-weight: 700; }
@@ -66,36 +34,69 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# 2. HỆ THỐNG XOAY VÒNG API KEY (HÃY THAY KEY THẬT CỦA BẠN VÀO ĐÂY)
+# HÀM ÂM THANH (TTS)
+# =====================================================================
+def text_to_speech(text):
+    try:
+        clean_text = text.replace("**", "").replace("*", "").replace("#", "").replace("`", "")
+        tts = gTTS(text=clean_text[:400], lang='vi')
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        return fp
+    except Exception:
+        return None
+
+# =====================================================================
+# 2. HỆ THỐNG 10 API KEY XOAY VÒNG CHẠY NGẦM SIÊU TỐC
 # =====================================================================
 if "key_index" not in st.session_state:
     st.session_state.key_index = 0
 
-API_KEYS_POOL = [
-    "AQ.Ab8RN6LP6hdiozw6LzRvNQRw7vVYpCAIa6ewtk0vWXo4B7iZmQ",
-    "AQ.Ab8RN6IbR-pyp_EYpTXTqRg_-HtrNnoHteas09wK0Pjx3Gkoxw",
-    "AQ.Ab8RN6IV7Fqx5P-8SeeRBFAfXc9X4JlMhrjhMZyJeA7hX32atQ",
-    "AQ.Ab8RN6LeHaGDuReA4rqIW3vtbEAC_8dD2unToWQ5eomdfX-CQg",
-    "AQ.Ab8RN6L8-AgD-PGw-j1texwdyeJ9xPhHcWlcZyh6MVW6Mfalzg"
-
-]
-
 try:
-    if "GEMINI_API_KEY_1" in st.secrets:
-        API_KEYS_POOL = [
-            st.secrets.get("GEMINI_API_KEY_1", API_KEYS_POOL[0]),
-        ]
+    API_KEYS_POOL = [
+        st.secrets.get(f"GEMINI_API_KEY_{i}", "") for i in range(1, 11)
+    ]
+    API_KEYS_POOL = [k for k in API_KEYS_POOL if k]
 except Exception:
-    pass
+    API_KEYS_POOL = []
 
 def get_active_client():
-    current_key = API_KEYS_POOL[st.session_state.key_index]
+    if not API_KEYS_POOL:
+        return None
+    current_key = API_KEYS_POOL[st.session_state.key_index % len(API_KEYS_POOL)]
     return genai.Client(api_key=current_key)
 
 if "genai_client" not in st.session_state:
     st.session_state.genai_client = get_active_client()
 
-client = st.session_state.genai_client
+def rotate_to_next_key():
+    if not API_KEYS_POOL:
+        return
+    st.session_state.key_index = (st.session_state.key_index + 1) % len(API_KEYS_POOL)
+    st.session_state.genai_client = get_active_client()
+    if "chat_session" in st.session_state:
+        st.session_state.chat_session = st.session_state.genai_client.chats.create(
+            model="gemini-3.8-flash",
+            config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.3)
+        )
+
+def safe_generate_content(contents, config=None, model="gemini-3.8-flash"):
+    for _ in range(max(1, len(API_KEYS_POOL))):
+        try:
+            curr_client = st.session_state.genai_client
+            if not curr_client:
+                raise Exception("Thiếu API Key.")
+            if config:
+                return curr_client.models.generate_content(model=model, contents=contents, config=config)
+            else:
+                return curr_client.models.generate_content(model=model, contents=contents)
+        except Exception as e:
+            if any(c in str(e) for c in ["429", "503", "403", "RESOURCE_EXHAUSTED", "UNAVAILABLE", "PERMISSION_DENIED"]):
+                rotate_to_next_key()
+            else:
+                raise e
+    return st.session_state.genai_client.models.generate_content(model=model, contents=contents)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -109,7 +110,7 @@ if "stats_exercises" not in st.session_state:
 st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>🎓 EduBot STEM & Statistics</h1>", unsafe_allow_html=True)
 
 # =====================================================================
-# 3. SIDEBAR ĐIỀU HƯỚNG & QUẢN LÝ TÀI LIỆU
+# 3. SIDEBAR CẤU HÌNH
 # =====================================================================
 with st.sidebar:
     st.markdown("### ⚙️ Cấu Hình Học Tập")
@@ -128,52 +129,45 @@ with st.sidebar:
     mon_hoc = st.selectbox("Chọn môn học:", danh_sach_mon)
     st.divider()
     
+    enable_tts = st.toggle("🔊 Bật đọc câu trả lời", value=True)
+    st.divider()
+
     st.markdown("### 📚 Thư Viện Tài Liệu")
-    uploaded_file = st.file_uploader("📁 Tải tệp hỗ trợ bài học:", type=None)
-    if uploaded_file is not None:
+    uploaded_file = st.file_uploader("📁 Tải tệp hỗ trợ:", type=None)
+    if uploaded_file is not None and st.session_state.genai_client:
         file_name = uploaded_file.name
         if file_name not in [s['name'] for s in st.session_state.uploaded_sources]:
-            file_extension = os.path.splitext(file_name)[1].lower()
-            if file_extension in ['.png', '.jpg', '.jpeg', '.webp']:
-                img_obj = Image.open(uploaded_file)
-                st.session_state.uploaded_sources.append({'name': file_name, 'type': 'image', 'data': img_obj})
+            file_ext = os.path.splitext(file_name)[1].lower()
+            if file_ext in ['.png', '.jpg', '.jpeg', '.webp']:
+                st.session_state.uploaded_sources.append({'name': file_name, 'type': 'image', 'data': Image.open(uploaded_file)})
             else:
-                with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as tmp:
+                with tempfile.NamedTemporaryFile(delete=False, suffix=file_ext) as tmp:
                     tmp.write(uploaded_file.getvalue())
                     tmp_path = tmp.name
                 try:
-                    file_ref = client.files.upload(file=tmp_path)
+                    file_ref = st.session_state.genai_client.files.upload(file=tmp_path)
                     st.session_state.uploaded_sources.append({'name': file_name, 'type': 'file_ref', 'data': file_ref})
                 finally:
                     if os.path.exists(tmp_path):
                         os.remove(tmp_path)
-            st.success(f"Đã thêm '{file_name}' vào thư viện!")
+            st.success(f"Đã thêm '{file_name}'!")
             st.rerun()
 
     selected_sources_for_chat = []
     if st.session_state.uploaded_sources:
-        st.caption("Danh sách tài liệu đính kèm hoạt động:")
+        st.caption("Tài liệu đính kèm:")
         for idx, src in enumerate(st.session_state.uploaded_sources):
-            col_check, col_del = st.columns([3, 1])
-            with col_check:
-                is_checked = st.checkbox(f"📎 {src['name']}", value=True, key=f"chk_src_{idx}")
-                if is_checked:
+            c1, c2 = st.columns([3, 1])
+            with c1:
+                if st.checkbox(f"📎 {src['name']}", value=True, key=f"chk_{idx}"):
                     selected_sources_for_chat.append(src['data'])
-            with col_del:
-                if st.button("❌", key=f"del_src_{idx}"):
+            with c2:
+                if st.button("❌", key=f"del_{idx}"):
                     st.session_state.uploaded_sources.pop(idx)
                     st.rerun()
                     
     st.divider()
-    st.markdown("### 📊 Tiến Độ")
-    col_m1, col_m2 = st.columns(2)
-    with col_m1:
-        st.markdown(f"<div class='metric-card'><div class='metric-val'>{st.session_state.stats_questions}</div><div class='metric-lbl'>Câu hỏi</div></div>", unsafe_allow_html=True)
-    with col_m2:
-        st.markdown(f"<div class='metric-card'><div class='metric-val'>{st.session_state.stats_exercises}</div><div class='metric-lbl'>Bài luyện</div></div>", unsafe_allow_html=True)
-        
-    st.divider()
-    if st.button("🧹 Xóa hội thoại hiện tại"):
+    if st.button("🧹 Xóa hội thoại"):
         st.session_state.messages = []
         st.session_state.pop("chat_session", None)
         st.rerun()
@@ -184,195 +178,149 @@ if "last_config" not in st.session_state or st.session_state.last_config != curr
     st.session_state.pop("chat_session", None)
 
 system_instruction = f"""
-Bạn là một Gia sư Giáo dục & Chuyên gia Thống kê - Khoa học STEM tại Việt Nam đối với trình độ: {bac_hoc} - {khoi_lop} - Môn học: {mon_hoc}.
-QUY TẮC SƯ PHẠM BẮT BUỘC:
-1. CHỈ GIẢI ĐÁP CÁC CÂU HỎI VỀ HỌC TẬP, TOÁN HỌC, THỐNG KÊ VÀ STEM thuộc môn {mon_hoc}. Từ chối khéo léo nếu nội dung ngoài lề.
-2. KHÔNG cung cấp ngay đáp án cuối cùng. Hãy hướng dẫn tư duy logic theo từng bước ngắn (Step-by-step).
-3. Sử dụng chuẩn hiển thị công thức LaTeX ($...$ hoặc $$...$$) đối với mọi số liệu toán học/thống kê.
-4. Luôn kết thúc câu bằng 1 câu hỏi gợi mở để người học tự hoàn thành bài tập.
+Bạn là Gia sư Giáo dục & Chuyên gia Thống kê - STEM tại Việt Nam. Trình độ: {bac_hoc} - {khoi_lop} - Môn: {mon_hoc}.
+QUY TẮC:
+1. Chỉ giải đáp kiến thức học tập, toán học, thống kê, STEM thuộc môn {mon_hoc}.
+2. Hướng dẫn tư duy từng bước ngắn (Step-by-step), không cho đáp án ngay.
+3. Dùng chuẩn LaTeX ($...$ hoặc $$...$$) cho số liệu/công thức toán.
+4. Luôn kết thúc bằng 1 câu hỏi gợi mở.
 """
 
-def rotate_to_next_key():
-    st.session_state.key_index = (st.session_state.key_index + 1) % len(API_KEYS_POOL)
-    st.warning(f"🔄 Đã tự động chuyển sang API Key dự phòng số {st.session_state.key_index + 1} do hết hạn mức!")
-    st.session_state.genai_client = get_active_client()
+if st.session_state.genai_client and "chat_session" not in st.session_state:
     st.session_state.chat_session = st.session_state.genai_client.chats.create(
         model="gemini-3.8-flash",
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            temperature=0.3
-        )
-    )
-
-if "chat_session" not in st.session_state:
-    st.session_state.chat_session = st.session_state.genai_client.chats.create(
-        model="gemini-3.8-flash",
-        config=types.GenerateContentConfig(
-            system_instruction=system_instruction,
-            temperature=0.3
-        )
+        config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.3)
     )
 
 # =====================================================================
-# 4. KHÔNG GIAN TABS CHỨC NĂNG CHÍNH
+# 4. GIAO DIỆN TABS
 # =====================================================================
 tab_chat, tab_stat_viz, tab_analytics, tab_time, tab_research = st.tabs([
-    "💬 Trò Chuyện Học Tập", 
-    "📊 Mô Hình Thống Kê & STEM",
-    "📈 Phân Tích Năng Lực",
-    "⏰ Quản Lý Thời Gian",
-    "🔍 Tra Cứu Học Thuật"
+    "💬 Trò Chuyện Học Tập", "📊 Thống Kê & STEM", "📈 Năng Lực", "⏰ Thời Gian", "🔍 Tra Cứu"
 ])
 
 with tab_chat:
-    st.markdown("#### ⚡ Công Cụ Hỗ Trợ Nhanh")
-    qc_cols = st.columns(4)
-    quick_action_prompt = None
+    if not API_KEYS_POOL:
+        st.error("⚠️ Chưa cấu hình API Key trong `secrets.toml`!")
+    else:
+        q_cols = st.columns([1.2, 1, 1, 1])
+        with q_cols[0]:
+            audio_bytes = audio_recorder(text="", recording_color="#2563eb", neutral_color="#e5e7eb", icon_size="lg")
+        
+        quick_prompt = None
+        with q_cols[1]:
+            if st.button("📝 Tóm tắt lý thuyết"): quick_prompt = f"Tóm tắt kiến thức cốt lõi môn {mon_hoc} ({khoi_lop})."
+        with q_cols[2]:
+            if st.button("🎯 Tạo trắc nghiệm"): quick_prompt = f"Tạo 3 câu hỏi trắc nghiệm môn {mon_hoc} ({khoi_lop})."
+        with q_cols[3]:
+            if st.button("💡 Giải thích công thức"): quick_prompt = f"Giải thích ý nghĩa công thức môn {mon_hoc}."
 
-    with qc_cols[0]:
-        if st.button("📝 Tóm tắt lý thuyết"):
-            quick_action_prompt = f"Hãy tóm tắt các điểm kiến thức cốt lõi, định luật hoặc công thức thống kê quan trọng của môn {mon_hoc} ({khoi_lop})."
-    with qc_cols[1]:
-        if st.button("🎯 Tạo bài trắc nghiệm"):
-            quick_action_prompt = f"Hãy tạo 3 câu hỏi trắc nghiệm bám sát môn {mon_hoc} ({khoi_lop}) để kiểm tra kiến thức (chưa đưa đáp án vội)."
-    with qc_cols[2]:
-        if st.button("💡 Giải thích công thức"):
-            quick_action_prompt = f"Hãy giải thích chi tiết ý nghĩa thực tiễn và cách áp dụng các công thức quan trọng trong môn {mon_hoc}."
-    with qc_cols[3]:
-        if st.button("🗺️ Sơ đồ tư duy"):
-            quick_action_prompt = f"Hãy thiết kế sơ đồ tư duy tóm tắt chủ đề môn {mon_hoc} bằng mã nguồn Mermaid.js (trong code block ```mermaid ... ```)."
+        st.divider()
 
-    st.divider()
+        for msg in st.session_state.messages:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"], unsafe_allow_html=True)
+                if "audio" in msg and msg["audio"]:
+                    st.audio(msg["audio"], format="audio/mp3")
 
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"], unsafe_allow_html=True)
+        user_input = None
+        if audio_bytes:
+            with st.spinner("Đang chuyển đổi giọng nói..."):
+                try:
+                    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav")
+                    res = safe_generate_content(contents=[audio_part, "Chuyển thành văn bản tiếng Việt chính xác, chỉ trả về nội dung."])
+                    user_input = res.text.strip()
+                except Exception as e:
+                    st.error(f"Lỗi micro: {e}")
+        elif quick_prompt:
+            user_input = quick_prompt
+        else:
+            user_input = st.chat_input("Nhập câu hỏi học tập...")
 
-    prompt = st.chat_input("Nhập câu hỏi học tập, bài toán thống kê hoặc yêu cầu hướng dẫn...")
-    user_input_content = None
+        if user_input:
+            payload = list(selected_sources_for_chat) + [user_input]
+            with st.chat_message("user"):
+                st.markdown(user_input)
+                st.session_state.messages.append({"role": "user", "content": user_input})
+            st.session_state.stats_questions += 1
 
-    if quick_action_prompt:
-        user_input_content = quick_action_prompt
-    elif prompt:
-        user_input_content = prompt
-
-    if user_input_content is not None:
-        contents_payload = list(selected_sources_for_chat)
-        contents_payload.append(user_input_content)
-
-        with st.chat_message("user"):
-            st.markdown(user_input_content)
-            st.session_state.messages.append({"role": "user", "content": user_input_content})
-
-        st.session_state.stats_questions += 1
-
-        with st.chat_message("assistant"):
-            try:
-                success = False
-                bot_reply = ""
-                for attempt in range(len(API_KEYS_POOL)):
-                    try:
-                        response_stream = st.session_state.chat_session.send_message_stream(contents_payload)
-                        def stream_generator():
-                            for chunk in response_stream:
-                                if chunk.text: yield chunk.text
-                        bot_reply = st.write_stream(stream_generator())
-                        success = True
-                        break
-                    except Exception as api_err:
-                        err_str = str(api_err)
-                        if "429" in err_str or "401" in err_str or "RESOURCE_EXHAUSTED" in err_str or "UNAUTHENTICATED" in err_str:
-                            rotate_to_next_key()
-                        else:
-                            raise api_err
-                
-                if success:
-                    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
-                else:
-                    st.error("⚠️ Tất cả API Key đều đã vượt quá hạn mức hoặc gặp lỗi xác thực. Vui lòng thử lại sau!")
-            except Exception as e:
-                st.error(f"Lỗi kết nối AI: {e}")
+            with st.chat_message("assistant"):
+                try:
+                    bot_reply = ""
+                    total_k = max(1, len(API_KEYS_POOL))
+                    success = False
+                    
+                    for _ in range(total_k):
+                        try:
+                            # Tối ưu tốc độ: Stream trực tiếp từng từ phản hồi
+                            response_stream = st.session_state.chat_session.send_message_stream(payload)
+                            def stream_gen():
+                                for chunk in response_stream:
+                                    if chunk.text: yield chunk.text
+                            bot_reply = st.write_stream(stream_gen())
+                            success = True
+                            break
+                        except Exception as api_err:
+                            if any(c in str(api_err) for c in ["429", "503", "403", "RESOURCE_EXHAUSTED", "UNAVAILABLE"]):
+                                rotate_to_next_key()
+                            else:
+                                raise api_err
+                    
+                    if success:
+                        audio_fp = text_to_speech(bot_reply) if enable_tts else None
+                        if audio_fp:
+                            st.audio(audio_fp, format="audio/mp3")
+                        st.session_state.messages.append({"role": "assistant", "content": bot_reply, "audio": audio_fp})
+                    else:
+                        st.error("⚠️ Hệ thống quá tải, vui lòng thử lại.")
+                except Exception as e:
+                    st.error(f"Lỗi kết nối: {e}")
 
 with tab_stat_viz:
-    st.subheader("📊 Trực Quan Hóa Dữ Liệu Thống Kê & STEM")
-    raw_data_input = st.text_input("Chuỗi số liệu mẫu:", "12, 15, 18, 20, 22, 25, 28, 30, 35, 40")
-    
-    if st.button("📊 Phân Tích Thống Kê & Vẽ Biểu Đồ"):
+    st.subheader("📊 Trực Quan Hóa Dữ Liệu")
+    data_str = st.text_input("Dữ liệu mẫu:", "12, 15, 18, 20, 22, 25, 28, 30, 35, 40")
+    if st.button("Phân tích thống kê"):
         try:
-            data_list = [float(x.strip()) for x in raw_data_input.split(",") if x.strip()]
-            if not data_list:
-                st.warning("Vui lòng nhập dữ liệu hợp lệ!")
-            else:
-                s = pd.Series(data_list)
-                mean_val, median_val, std_val, var_val = s.mean(), s.median(), s.std(ddof=1), s.var(ddof=1)
-                
-                col_s1, col_s2, col_s3, col_s4 = st.columns(4)
-                col_s1.metric("Trung bình mẫu (Mean)", f"{mean_val:.2f}")
-                col_s2.metric("Trung vị (Median)", f"{median_val:.2f}")
-                col_s3.metric("Độ lệch chuẩn (Std)", f"{std_val:.2f}")
-                col_s4.metric("Phương sai (Var)", f"{var_val:.2f}")
-                
-                fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-                ax1.hist(data_list, bins='auto', color='#2563eb', edgecolor='white', alpha=0.8)
-                ax1.set_title("Biểu đồ Tần suất (Histogram)")
-                ax2.boxplot(data_list, vert=True, patch_artist=True, boxprops=dict(facecolor="#93c5fd", color="#2563eb"))
-                ax2.set_title("Biểu đồ Hộp (Boxplot)")
-                st.pyplot(fig)
-                
-                with st.spinner("AI đang phân tích ý nghĩa thống kê..."):
-                    ai_stat_analysis = st.session_state.genai_client.models.generate_content(
-                        model='gemini-3.8-flash',
-                        contents=f"Dữ liệu: {data_list}. Mean={mean_val:.2f}, Median={median_val:.2f}, Std={std_val:.2f}. Nhận xét khoa học."
-                    )
-                    st.markdown("### 🤖 Nhận định chuyên gia:")
-                    st.markdown(ai_stat_analysis.text)
+            arr = [float(x.strip()) for x in data_str.split(",") if x.strip()]
+            s = pd.Series(arr)
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Mean", f"{s.mean():.2f}")
+            c2.metric("Median", f"{s.median():.2f}")
+            c3.metric("Std", f"{s.std(ddof=1):.2f}")
+            c4.metric("Var", f"{s.var(ddof=1):.2f}")
+            fig, (a1, a2) = plt.subplots(1, 2, figsize=(10, 4))
+            a1.hist(arr, bins='auto', color='#2563eb', edgecolor='white')
+            a2.boxplot(arr, patch_artist=True, boxprops=dict(facecolor="#93c5fd"))
+            st.pyplot(fig)
         except Exception as e:
-            st.error(f"Lỗi xử lý dữ liệu: {e}")
+            st.error(f"Lỗi: {e}")
 
 with tab_analytics:
-    st.subheader("📈 Phân Tích Năng Lực & Lộ Trình")
+    st.subheader("📈 Phân Tích Năng Lực")
     if len(st.session_state.messages) < 2:
-        st.info("💡 Hãy trao đổi với gia sư AI ở tab Trò chuyện học tập để hệ thống thu thập dữ liệu!")
+        st.info("Hãy trò chuyện thêm với EduBot để phân tích.")
     else:
-        if st.button("📊 Phân Tích Năng Lực Ngay", use_container_width=True):
-            with st.spinner("Đang phân tích dữ liệu..."):
-                chat_history_summary = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
-                analysis_res = st.session_state.genai_client.models.generate_content(
-                    model='gemini-3.8-flash',
-                    contents=f"Phân tích điểm mạnh/yếu môn {mon_hoc} dựa trên lịch sử: {chat_history_summary}"
-                )
-                st.markdown(f"<div class='analytics-box'>{analysis_res.text}</div>", unsafe_allow_html=True)
+        if st.button("Phân tích ngay"):
+            history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
+            res = safe_generate_content(contents=f"Phân tích năng lực môn {mon_hoc} dựa trên lịch sử: {history}")
+            st.markdown(f"<div class='analytics-box'>{res.text}</div>", unsafe_allow_html=True)
 
 with tab_time:
-    st.subheader("⏰ Quản Lý Thời Gian & Ôn Tập (Spaced Repetition)")
-    col_t1, col_t2 = st.columns(2)
-    with col_t1:
-        exam_name = st.text_input("Tên kỳ thi:", "Kỳ thi học kỳ")
-        exam_date = st.date_input("Chọn ngày diễn ra:", datetime.date.today() + datetime.timedelta(days=30))
-        if st.button("📌 Tính toán thời gian & Lập lịch"):
-            days_left = (exam_date - datetime.date.today()).days
-            st.markdown(f"<div class='countdown-card'><h2>🚨 Còn lại {days_left} ngày</h2><p><b>{exam_name}</b></p></div>", unsafe_allow_html=True)
-            with st.spinner("Đang thiết lập lịch ôn tập..."):
-                schedule_res = st.session_state.genai_client.models.generate_content(
-                    model='gemini-3.8-flash',
-                    contents=f"Thiết kế lịch ôn Spaced Repetition môn {mon_hoc} trong {days_left} ngày."
-                )
-                st.markdown(schedule_res.text)
-    with col_t2:
-        st.info("Hệ thống tự động nhắc nhở ôn lại theo các mốc khoa học.")
+    st.subheader("⏰ Quản Lý Thời Gian")
+    exam_name = st.text_input("Tên kỳ thi:", "Kỳ thi học kỳ")
+    exam_date = st.date_input("Ngày thi:", datetime.date.today() + datetime.timedelta(days=30))
+    if st.button("Tính đếm ngược"):
+        days = (exam_date - datetime.date.today()).days
+        st.markdown(f"<div class='countdown-card'><h2>🚨 Còn lại {days} ngày</h2><p><b>{exam_name}</b></p></div>", unsafe_allow_html=True)
+        res = safe_generate_content(contents=f"Lập lịch ôn Spaced Repetition môn {mon_hoc} trong {days} ngày.")
+        st.markdown(res.text)
 
 with tab_research:
-    st.subheader("🔍 Tra Cứu Học Thuật (Google Search Grounding)")
-    research_query = st.text_input("Nhập chủ đề cần tra cứu:")
-    if st.button("🔎 Truy Vấn Google Search"):
-        if research_query:
-            with st.spinner("Đang tìm kiếm thông tin..."):
-                grounding_res = st.session_state.genai_client.models.generate_content(
-                    model='gemini-3.8-flash',
-                    contents=f"Tìm kiếm thông tin uy tín về: '{research_query}' cho môn {mon_hoc}.",
-                    config=types.GenerateContentConfig(tools=[{"google_search": {}}])
-                )
-                st.markdown("### 🌐 Kết quả:")
-                st.markdown(grounding_res.text)
-        else:
-            st.warning("Vui lòng nhập chủ đề!")
+    st.subheader("🔍 Tra Cứu Google Search Grounding")
+    query = st.text_input("Chủ đề tra cứu:")
+    if st.button("Truy vấn") and query:
+        res = safe_generate_content(
+            contents=f"Tìm kiếm thông tin về: '{query}' cho môn {mon_hoc}.",
+            config=types.GenerateContentConfig(tools=[{"google_search": {}}])
+        )
+        st.markdown(res.text)
