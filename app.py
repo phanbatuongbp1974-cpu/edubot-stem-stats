@@ -16,8 +16,6 @@ st.set_page_config(page_title="EduBot STEM & Statistics", page_icon="🎓", layo
 
 st.markdown("""
 <style>
-    /* Sử dụng biến hệ thống của Streamlit để thích ứng linh hoạt theo Light/Dark Mode */
-    
     /* Khung Chat Message */
     .stChatMessage { 
         border-radius: 16px; 
@@ -226,7 +224,7 @@ if "chat_session" not in st.session_state:
     )
 
 # =====================================================================
-# 4. KHÔNG GIAN TABS CHỨC NĂNG CHÍNH
+# 4. KHÔNG GIAN TABS CHỨC NĂNG CHÍNH (Giữ nguyên các tab cốt lõi)
 # =====================================================================
 tab_chat, tab_stat_viz, tab_analytics, tab_time, tab_research = st.tabs([
     "💬 Trò Chuyện Học Tập", 
@@ -314,8 +312,6 @@ with tab_stat_viz:
                 col_s4.metric("Phương sai (Var)", f"{var_val:.2f}")
                 
                 st.markdown("### 📊 Biểu Đồ Phân Phối & Hộp (Matplotlib):")
-                
-                # Tự động điều chỉnh màu biểu đồ theo chế độ giao diện
                 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
                 
                 ax1.hist(data_list, bins='auto', color='#2563eb', edgecolor='white', alpha=0.8)
