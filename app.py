@@ -16,7 +16,6 @@ st.set_page_config(page_title="EduBot STEM & Statistics", page_icon="🎓", layo
 
 st.markdown("""
 <style>
-    /* Khung Chat Message */
     .stChatMessage { 
         border-radius: 16px; 
         padding: 16px; 
@@ -24,8 +23,6 @@ st.markdown("""
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
         border: 1px solid rgba(128, 128, 128, 0.2); 
     }
-    
-    /* Nút bấm chuyển động mượt */
     .stButton>button { 
         border-radius: 12px; 
         font-weight: 600; 
@@ -40,8 +37,6 @@ st.markdown("""
         box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.15);
         transform: translateY(-1px);
     }
-    
-    /* Khối chỉ số Tiến độ */
     .metric-card { 
         border: 1px solid rgba(128, 128, 128, 0.2); 
         padding: 16px; 
@@ -49,70 +44,68 @@ st.markdown("""
         text-align: center;
         box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    .metric-val { 
-        font-size: 28px; 
-        font-weight: 800; 
-        color: #2563eb; 
-    }
-    .metric-lbl { 
-        font-size: 11px; 
-        font-weight: 700; 
-        text-transform: uppercase; 
-        letter-spacing: 0.05em;
-        margin-top: 4px;
-        opacity: 0.8;
-    }
-    
-    /* Khối Phân tích kết quả */
+    .metric-val { font-size: 28px; font-weight: 800; color: #2563eb; }
+    .metric-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; opacity: 0.8; }
     .analytics-box { 
         border-left: 5px solid #2563eb; 
         border-top: 1px solid rgba(128, 128, 128, 0.2);
         border-right: 1px solid rgba(128, 128, 128, 0.2);
         border-bottom: 1px solid rgba(128, 128, 128, 0.2);
-        padding: 20px; 
-        border-radius: 4px 16px 16px 4px; 
-        margin-bottom: 15px;
+        padding: 20px; border-radius: 4px 16px 16px 4px; margin-bottom: 15px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
-    
-    /* Thẻ đếm ngược kỳ thi chuyển sắc Gradient */
     .countdown-card { 
         background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); 
-        color: white !important; 
-        padding: 24px; 
-        border-radius: 16px; 
-        text-align: center; 
-        margin-bottom: 20px;
+        color: white !important; padding: 24px; border-radius: 16px; text-align: center; margin-bottom: 20px;
         box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.25);
     }
     .countdown-card h2 { color: white !important; margin: 0; font-weight: 800;}
     .countdown-card p { color: #bfdbfe !important; margin-top: 8px; font-size: 14px;}
-
     h1, h2, h3, h4 { font-weight: 700; }
 </style>
 """, unsafe_allow_html=True)
 
 # =====================================================================
-# 2. KHỞI TẠO API KEY & GENAI CLIENT AN TOÀN
+# 2. HỆ THỐNG XOAY VÒNG 5 API KEY THÔNG MINH
 # =====================================================================
-API_KEY = None
+if "key_index" not in st.session_state:
+    st.session_state.key_index = 0
+
+# Danh sách 5 API Key (Bạn thay các chuỗi bên dưới bằng Key chuẩn bắt đầu bằng AIzaSy...)
+API_KEYS_POOL = [
+    os.environ.get("GEMINI_API_KEY_1", "AIzaSy_KEY_1_THAY_O_DAY"),
+    os.environ.get("GEMINI_API_KEY_2", "AIzaSy_KEY_2_THAY_O_DAY"),
+    os.environ.get("GEMINI_API_KEY_3", "AIzaSy_KEY_3_THAY_O_DAY"),
+    os.environ.get("GEMINI_API_KEY_4", "AIzaSy_KEY_4_THAY_O_DAY"),
+    os.environ.get("GEMINI_API_KEY_5", "AIzaSy_KEY_5_THAY_O_DAY"),
+]
+
+# Ưu tiên lấy từ st.secrets nếu có cấu hình
 try:
-    if "GEMINI_API_KEY" in st.secrets:
-        API_KEY = st.secrets["GEMINI_API_KEY"]
+    if "GEMINI_API_KEY_1" in st.secrets:
+        API_KEYS_POOL = [
+            st.secrets.get("GEMINI_API_KEY_1", ""),
+            st.secrets.get("GEMINI_API_KEY_2", ""),
+            st.secrets.get("GEMINI_API_KEY_3", ""),
+            st.secrets.get("GEMINI_API_KEY_4", ""),
+            st.secrets.get("GEMINI_API_KEY_5", ""),
+        ]
 except Exception:
     pass
 
-if not API_KEY:
-    API_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6I1t8rapOoxtoAiXErBXBmLnDIkZ_S-IoHE9sWmok-K_g")
+def get_active_client():
+    current_key = API_KEYS_POOL[st.session_state.key_index]
+    return genai.Client(api_key=current_key)
 
-if not API_KEY:
-    st.error("⚠️ Không tìm thấy API Key mặc định hệ thống.")
-    API_KEY = st.text_input("Vui lòng nhập API Key của bạn tại đây:", type="password")
-    if not API_KEY:
-        st.stop()
+def rotate_to_next_key():
+    st.session_state.key_index = (st.session_state.key_index + 1) % len(API_KEYS_POOL)
+    st.warning(f"🔄 Đã tự động chuyển sang API Key dự phòng số {st.session_state.key_index + 1} do hết hạn mức!")
+    st.session_state.genai_client = get_active_client()
+    st.session_state.pop("chat_session", None)
 
 if "genai_client" not in st.session_state:
-    st.session_state.genai_client = genai.Client(api_key=API_KEY)
+    st.session_state.genai_client = get_active_client()
+
 client = st.session_state.genai_client
 
 # Khởi tạo các State lưu trữ dữ liệu
@@ -125,7 +118,6 @@ if "stats_questions" not in st.session_state:
 if "stats_exercises" not in st.session_state:
     st.session_state.stats_exercises = 0
 
-# Tiêu đề giao diện chính
 st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>🎓 EduBot STEM & Statistics</h1>", unsafe_allow_html=True)
 
 # =====================================================================
@@ -170,7 +162,6 @@ with st.sidebar:
             st.success(f"Đã thêm '{file_name}' vào thư viện!")
             st.rerun()
 
-    # Quản lý danh sách nguồn tài liệu đã tải
     selected_sources_for_chat = []
     if st.session_state.uploaded_sources:
         st.caption("Danh sách tài liệu đính kèm hoạt động:")
@@ -199,7 +190,6 @@ with st.sidebar:
         st.session_state.pop("chat_session", None)
         st.rerun()
 
-# Định vị System Instruction cho Chat Session
 current_config = f"{bac_hoc}_{khoi_lop}_{mon_hoc}"
 if "last_config" not in st.session_state or st.session_state.last_config != current_config:
     st.session_state.last_config = current_config
@@ -216,7 +206,7 @@ QUY TẮC SƯ PHẠM BẮT BUỘC:
 
 if "chat_session" not in st.session_state:
     st.session_state.chat_session = client.chats.create(
-        model="gemini-flash-latest",
+        model="gemini-1.5-flash",
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
             temperature=0.3
@@ -224,7 +214,7 @@ if "chat_session" not in st.session_state:
     )
 
 # =====================================================================
-# 4. KHÔNG GIAN TABS CHỨC NĂNG CHÍNH (Giữ nguyên các tab cốt lõi)
+# 4. KHÔNG GIAN TABS CHỨC NĂNG CHÍNH
 # =====================================================================
 tab_chat, tab_stat_viz, tab_analytics, tab_time, tab_research = st.tabs([
     "💬 Trò Chuyện Học Tập", 
@@ -278,19 +268,35 @@ with tab_chat:
 
         with st.chat_message("assistant"):
             try:
-                response_stream = st.session_state.chat_session.send_message_stream(contents_payload)
-                def stream_generator():
-                    for chunk in response_stream:
-                        if chunk.text: yield chunk.text
-                bot_reply = st.write_stream(stream_generator())
-                st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+                # Cơ chế tự động thử xoay vòng key nếu gặp lỗi 429 hoặc 401
+                success = False
+                bot_reply = ""
+                for attempt in range(len(API_KEYS_POOL)):
+                    try:
+                        response_stream = st.session_state.chat_session.send_message_stream(contents_payload)
+                        def stream_generator():
+                            for chunk in response_stream:
+                                if chunk.text: yield chunk.text
+                        bot_reply = st.write_stream(stream_generator())
+                        success = True
+                        break
+                    except Exception as api_err:
+                        # Kiểm tra nếu lỗi do hết hạn mức (429) hoặc xác thực (401)
+                        err_str = str(api_err)
+                        if "429" in err_str or "401" in err_str or "RESOURCE_EXHAUSTED" in err_str or "UNAUTHENTICATED" in err_str:
+                            rotate_to_next_key()
+                        else:
+                            raise api_err
+                
+                if success:
+                    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+                else:
+                    st.error("⚠️ Tất cả 5 API Key đều đã vượt quá hạn mức hoặc gặp lỗi xác thực. Vui lòng thử lại sau!")
             except Exception as e:
                 st.error(f"Lỗi kết nối AI: {e}")
 
 with tab_stat_viz:
     st.subheader("📊 Trực Quan Hóa Dữ Liệu Thống Kê & STEM")
-    st.markdown("Nhập bộ số liệu mẫu (cách nhau bởi dấu phẩy) để hệ thống tự động tính toán thống kê mô tả và vẽ biểu đồ trực quan.")
-    
     raw_data_input = st.text_input("Chuỗi số liệu mẫu:", "12, 15, 18, 20, 22, 25, 28, 30, 35, 40")
     
     if st.button("📊 Phân Tích Thống Kê & Vẽ Biểu Đồ"):
@@ -300,10 +306,7 @@ with tab_stat_viz:
                 st.warning("Vui lòng nhập dữ liệu hợp lệ!")
             else:
                 s = pd.Series(data_list)
-                mean_val = s.mean()
-                median_val = s.median()
-                std_val = s.std(ddof=1)
-                var_val = s.var(ddof=1)
+                mean_val, median_val, std_val, var_val = s.mean(), s.median(), s.std(ddof=1), s.var(ddof=1)
                 
                 col_s1, col_s2, col_s3, col_s4 = st.columns(4)
                 col_s1.metric("Trung bình mẫu (Mean)", f"{mean_val:.2f}")
@@ -311,26 +314,19 @@ with tab_stat_viz:
                 col_s3.metric("Độ lệch chuẩn (Std)", f"{std_val:.2f}")
                 col_s4.metric("Phương sai (Var)", f"{var_val:.2f}")
                 
-                st.markdown("### 📊 Biểu Đồ Phân Phối & Hộp (Matplotlib):")
                 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-                
                 ax1.hist(data_list, bins='auto', color='#2563eb', edgecolor='white', alpha=0.8)
                 ax1.set_title("Biểu đồ Tần suất (Histogram)")
-                ax1.set_xlabel("Giá trị")
-                ax1.set_ylabel("Tần số")
-                
                 ax2.boxplot(data_list, vert=True, patch_artist=True, boxprops=dict(facecolor="#93c5fd", color="#2563eb"))
                 ax2.set_title("Biểu đồ Hộp (Boxplot)")
-                ax2.set_ylabel("Giá trị")
-                
                 st.pyplot(fig)
                 
-                with st.spinner("AI đang phân tích ý nghĩa thống kê của bộ dữ liệu..."):
+                with st.spinner("AI đang phân tích ý nghĩa thống kê..."):
                     ai_stat_analysis = client.models.generate_content(
-                        model='gemini-flash-latest',
-                        contents=f"Dữ liệu thống kê mẫu: {data_list}. Mean={mean_val:.2f}, Median={median_val:.2f}, Std={std_val:.2f}. Hãy đưa ra nhận xét khoa học về xu thế trung tâm, độ phân tán và đặc điểm phân phối của bộ dữ liệu này."
+                        model='gemini-1.5-flash',
+                        contents=f"Dữ liệu: {data_list}. Mean={mean_val:.2f}, Median={median_val:.2f}, Std={std_val:.2f}. Nhận xét khoa học."
                     )
-                    st.markdown("### 🤖 Nhận định chuyên gia thống kê:")
+                    st.markdown("### 🤖 Nhận định chuyên gia:")
                     st.markdown(ai_stat_analysis.text)
         except Exception as e:
             st.error(f"Lỗi xử lý dữ liệu: {e}")
@@ -338,14 +334,14 @@ with tab_stat_viz:
 with tab_analytics:
     st.subheader("📈 Phân Tích Năng Lực & Lộ Trình")
     if len(st.session_state.messages) < 2:
-        st.info("💡 Hãy trao đổi với gia sư AI ở tab Trò chuyện học tập để hệ thống thu thập dữ liệu phân tích!")
+        st.info("💡 Hãy trao đổi với gia sư AI ở tab Trò chuyện học tập để hệ thống thu thập dữ liệu!")
     else:
         if st.button("📊 Phân Tích Năng Lực Ngay", use_container_width=True):
-            with st.spinner("Đang phân tích dữ liệu học tập..."):
+            with st.spinner("Đang phân tích dữ liệu..."):
                 chat_history_summary = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
                 analysis_res = client.models.generate_content(
-                    model='gemini-flash-latest',
-                    contents=f"Phân tích điểm mạnh, điểm yếu và đề xuất lộ trình ôn tập môn {mon_hoc} cho học sinh dựa trên lịch sử: {chat_history_summary}"
+                    model='gemini-1.5-flash',
+                    contents=f"Phân tích điểm mạnh/yếu môn {mon_hoc} dựa trên lịch sử: {chat_history_summary}"
                 )
                 st.markdown(f"<div class='analytics-box'>{analysis_res.text}</div>", unsafe_allow_html=True)
 
@@ -353,45 +349,32 @@ with tab_time:
     st.subheader("⏰ Quản Lý Thời Gian & Ôn Tập (Spaced Repetition)")
     col_t1, col_t2 = st.columns(2)
     with col_t1:
-        st.markdown("### ⏳ Đếm Ngược Kỳ Thi")
         exam_name = st.text_input("Tên kỳ thi:", "Kỳ thi học kỳ")
         exam_date = st.date_input("Chọn ngày diễn ra:", datetime.date.today() + datetime.timedelta(days=30))
-        
-        if st.button("📌 Tính toán thời gian & Lập lịch ôn tập"):
+        if st.button("📌 Tính toán thời gian & Lập lịch"):
             days_left = (exam_date - datetime.date.today()).days
-            st.markdown(f"""
-                <div class='countdown-card'>
-                    <h2>🚨 Còn lại {days_left} ngày</h2>
-                    <p>Cho kỳ thi: <b>{exam_name}</b> ({exam_date.strftime('%d/%m/%Y')})</p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            with st.spinner("Đang thiết lập lịch ôn tập theo đường cong lãng quên..."):
+            st.markdown(f"<div class='countdown-card'><h2>🚨 Còn lại {days_left} ngày</h2><p><b>{exam_name}</b></p></div>", unsafe_allow_html=True)
+            with st.spinner("Đang thiết lập lịch ôn tập..."):
                 schedule_res = client.models.generate_content(
-                    model='gemini-flash-latest',
-                    contents=f"Thiết kế lịch ôn tập thông minh áp dụng Spaced Repetition môn {mon_hoc} trong {days_left} ngày."
+                    model='gemini-1.5-flash',
+                    contents=f"Thiết kế lịch ôn Spaced Repetition môn {mon_hoc} trong {days_left} ngày."
                 )
                 st.markdown(schedule_res.text)
     with col_t2:
-        st.markdown("### 🧠 Nguyên Lý Spaced Repetition")
-        st.info("Hệ thống tự động nhắc nhở ôn lại theo các mốc (1 ngày, 3 ngày, 7 ngày, 14 ngày, 30 ngày) để chuyển hóa ký ức ngắn hạn thành trí nhớ dài hạn.")
+        st.info("Hệ thống tự động nhắc nhở ôn lại theo các mốc khoa học.")
 
 with tab_research:
     st.subheader("🔍 Tra Cứu Học Thuật (Google Search Grounding)")
-    st.markdown("Sử dụng công cụ **Google Search Grounding** tích hợp trực tiếp để tìm kiếm các bài báo khoa học, định luật hoặc tài liệu chính thống.")
-    
-    research_query = st.text_input("Nhập chủ đề cần tra cứu tài liệu học thuật:")
+    research_query = st.text_input("Nhập chủ đề cần tra cứu:")
     if st.button("🔎 Truy Vấn Google Search"):
         if research_query:
-            with st.spinner("Đang tìm kiếm thông tin xác thực từ Internet..."):
+            with st.spinner("Đang tìm kiếm thông tin..."):
                 grounding_res = client.models.generate_content(
-                    model='gemini-flash-latest',
-                    contents=f"Hãy tìm kiếm và tổng hợp các thông tin học thuật, tài liệu uy tín từ Internet về chủ đề: '{research_query}' phục vụ cho môn {mon_hoc} ({khoi_lop}).",
-                    config=types.GenerateContentConfig(
-                        tools=[types.Tool(google_search=types.GoogleSearch())]
-                    )
+                    model='gemini-1.5-flash',
+                    contents=f"Tìm kiếm thông tin uy tín về: '{research_query}' cho môn {mon_hoc}.",
+                    config=types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())])
                 )
-                st.markdown("### 🌐 Kết quả tra cứu thực tế:")
+                st.markdown("### 🌐 Kết quả:")
                 st.markdown(grounding_res.text)
         else:
-            st.warning("Vui lòng nhập chủ đề cần tra cứu!")
+            st.warning("Vui lòng nhập chủ đề!")
