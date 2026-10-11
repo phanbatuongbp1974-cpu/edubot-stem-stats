@@ -33,9 +33,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Sử dụng chuẩn model Flash ổn định nhất của Gemini
-MODEL_NAME = "gemini-2.5-flash"
-
 # =====================================================================
 # HÀM ÂM THANH (TTS)
 # =====================================================================
@@ -80,11 +77,11 @@ def rotate_to_next_key():
     st.session_state.genai_client = get_active_client()
     if "chat_session" in st.session_state:
         st.session_state.chat_session = st.session_state.genai_client.chats.create(
-            model=MODEL_NAME,
+            model="gemini-3.8-flash",
             config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.3)
         )
 
-def safe_generate_content(contents, config=None, model=MODEL_NAME):
+def safe_generate_content(contents, config=None, model="gemini-3.8-flash"):
     for _ in range(max(1, len(API_KEYS_POOL))):
         try:
             curr_client = st.session_state.genai_client
@@ -191,7 +188,7 @@ QUY TẮC:
 
 if st.session_state.genai_client and "chat_session" not in st.session_state:
     st.session_state.chat_session = st.session_state.genai_client.chats.create(
-        model=MODEL_NAME,
+        model="gemini-3.8-flash",
         config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.3)
     )
 
@@ -255,6 +252,7 @@ with tab_chat:
                     
                     for _ in range(total_k):
                         try:
+                            # Tối ưu tốc độ: Stream trực tiếp từng từ phản hồi
                             response_stream = st.session_state.chat_session.send_message_stream(payload)
                             def stream_gen():
                                 for chunk in response_stream:
@@ -274,7 +272,7 @@ with tab_chat:
                             st.audio(audio_fp, format="audio/mp3")
                         st.session_state.messages.append({"role": "assistant", "content": bot_reply, "audio": audio_fp})
                     else:
-                        st.error("⚠️ Hệ thống quá tải hoặc hết hạn mức tất cả các Key, vui lòng thử lại sau.")
+                        st.error("⚠️ Hệ thống quá tải, vui lòng thử lại.")
                 except Exception as e:
                     st.error(f"Lỗi kết nối: {e}")
 
