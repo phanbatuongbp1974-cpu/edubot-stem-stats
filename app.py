@@ -8,9 +8,6 @@ import datetime
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from gtts import gTTS
-import io
-from audio_recorder_streamlit import audio_recorder
 
 # =====================================================================
 # 1. CẤU HÌNH GIAO DIỆN WEB & CSS
@@ -33,22 +30,10 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# =====================================================================
-# HÀM ÂM THANH (TTS)
-# =====================================================================
-def text_to_speech(text):
-    try:
-        clean_text = text.replace("**", "").replace("*", "").replace("#", "").replace("`", "")
-        tts = gTTS(text=clean_text[:400], lang='vi')
-        fp = io.BytesIO()
-        tts.write_to_fp(fp)
-        fp.seek(0)
-        return fp
-    except Exception:
-        return None
+MODEL_NAME = "gemini-3.8-flash"
 
 # =====================================================================
-# 2. HỆ THỐNG 10 API KEY XOAY VÒNG CHẠY NGẦM SIÊU TỐC
+# 2. HỆ THỐNG 10 API KEY XOAY VÒNG CHẠY NGẦM
 # =====================================================================
 if "key_index" not in st.session_state:
     st.session_state.key_index = 0
@@ -77,11 +62,11 @@ def rotate_to_next_key():
     st.session_state.genai_client = get_active_client()
     if "chat_session" in st.session_state:
         st.session_state.chat_session = st.session_state.genai_client.chats.create(
-            model="gemini-3.8-flash",
+            model=MODEL_NAME,
             config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.3)
         )
 
-def safe_generate_content(contents, config=None, model="gemini-3.8-flash"):
+def safe_generate_content(contents, config=None, model=MODEL_NAME):
     for _ in range(max(1, len(API_KEYS_POOL))):
         try:
             curr_client = st.session_state.genai_client
@@ -127,9 +112,6 @@ with st.sidebar:
         danh_sach_mon = ["Ngữ văn", "Toán", "Vật lý", "Hóa học", "Sinh học", "Lịch sử", "Địa lý", "Thống kê toán học & Khoa học dữ liệu", "Tin học"]
         
     mon_hoc = st.selectbox("Chọn môn học:", danh_sach_mon)
-    st.divider()
-    
-    enable_tts = st.toggle("🔊 Bật đọc câu trả lời", value=True)
     st.divider()
 
     st.markdown("### 📚 Thư Viện Tài Liệu")
@@ -188,12 +170,12 @@ QUY TẮC:
 
 if st.session_state.genai_client and "chat_session" not in st.session_state:
     st.session_state.chat_session = st.session_state.genai_client.chats.create(
-        model="gemini-3.8-flash",
+        model=MODEL_NAME,
         config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.3)
     )
 
 # =====================================================================
-# 4. GIAO DIỆN TABS
+# 4. GIAO DIỆN TABS CHÍNH
 # =====================================================================
 tab_chat, tab_stat_viz, tab_analytics, tab_time, tab_research = st.tabs([
     "💬 Trò Chuyện Học Tập", "📊 Thống Kê & STEM", "📈 Năng Lực", "⏰ Thời Gian", "🔍 Tra Cứu"
@@ -203,16 +185,13 @@ with tab_chat:
     if not API_KEYS_POOL:
         st.error("⚠️ Chưa cấu hình API Key trong `secrets.toml`!")
     else:
-        q_cols = st.columns([1.2, 1, 1, 1])
-        with q_cols[0]:
-            audio_bytes = audio_recorder(text="", recording_color="#2563eb", neutral_color="#e5e7eb", icon_size="lg")
-        
+        q_cols = st.columns(3)
         quick_prompt = None
-        with q_cols[1]:
+        with q_cols[0]:
             if st.button("📝 Tóm tắt lý thuyết"): quick_prompt = f"Tóm tắt kiến thức cốt lõi môn {mon_hoc} ({khoi_lop})."
-        with q_cols[2]:
+        with q_cols[1]:
             if st.button("🎯 Tạo trắc nghiệm"): quick_prompt = f"Tạo 3 câu hỏi trắc nghiệm môn {mon_hoc} ({khoi_lop})."
-        with q_cols[3]:
+        with q_cols[2]:
             if st.button("💡 Giải thích công thức"): quick_prompt = f"Giải thích ý nghĩa công thức môn {mon_hoc}."
 
         st.divider()
@@ -220,22 +199,9 @@ with tab_chat:
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"], unsafe_allow_html=True)
-                if "audio" in msg and msg["audio"]:
-                    st.audio(msg["audio"], format="audio/mp3")
 
-        user_input = None
-        if audio_bytes:
-            with st.spinner("Đang chuyển đổi giọng nói..."):
-                try:
-                    audio_part = types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav")
-                    res = safe_generate_content(contents=[audio_part, "Chuyển thành văn bản tiếng Việt chính xác, chỉ trả về nội dung."])
-                    user_input = res.text.strip()
-                except Exception as e:
-                    st.error(f"Lỗi micro: {e}")
-        elif quick_prompt:
-            user_input = quick_prompt
-        else:
-            user_input = st.chat_input("Nhập câu hỏi học tập...")
+        prompt_input = st.chat_input("Nhập câu hỏi học tập...")
+        user_input = quick_prompt if quick_prompt else prompt_input
 
         if user_input:
             payload = list(selected_sources_for_chat) + [user_input]
@@ -252,7 +218,6 @@ with tab_chat:
                     
                     for _ in range(total_k):
                         try:
-                            # Tối ưu tốc độ: Stream trực tiếp từng từ phản hồi
                             response_stream = st.session_state.chat_session.send_message_stream(payload)
                             def stream_gen():
                                 for chunk in response_stream:
@@ -267,12 +232,9 @@ with tab_chat:
                                 raise api_err
                     
                     if success:
-                        audio_fp = text_to_speech(bot_reply) if enable_tts else None
-                        if audio_fp:
-                            st.audio(audio_fp, format="audio/mp3")
-                        st.session_state.messages.append({"role": "assistant", "content": bot_reply, "audio": audio_fp})
+                        st.session_state.messages.append({"role": "assistant", "content": bot_reply})
                     else:
-                        st.error("⚠️ Hệ thống quá tải, vui lòng thử lại.")
+                        st.error("⚠️ Hệ thống quá tải hoặc hết hạn mức tất cả các Key, vui lòng thử lại sau.")
                 except Exception as e:
                     st.error(f"Lỗi kết nối: {e}")
 
