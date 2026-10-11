@@ -3,6 +3,4 @@ google-genai
 pandas
 numpy
 matplotlib
-gtts
-audio-recorder-streamlit
 pillow
