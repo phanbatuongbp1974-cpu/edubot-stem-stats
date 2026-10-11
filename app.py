@@ -71,24 +71,24 @@ st.markdown("""
 if "key_index" not in st.session_state:
     st.session_state.key_index = 0
 
-# Danh sách 5 API Key (Bạn thay các chuỗi bên dưới bằng Key chuẩn bắt đầu bằng AIzaSy...)
+# Danh sách 5 API Key bạn đã cung cấp
 API_KEYS_POOL = [
-    os.environ.get("GEMINI_API_KEY_1", "AIzaSy_KEY_1_THAY_O_DAY"),
-    os.environ.get("GEMINI_API_KEY_2", "AIzaSy_KEY_2_THAY_O_DAY"),
-    os.environ.get("GEMINI_API_KEY_3", "AIzaSy_KEY_3_THAY_O_DAY"),
-    os.environ.get("GEMINI_API_KEY_4", "AIzaSy_KEY_4_THAY_O_DAY"),
-    os.environ.get("GEMINI_API_KEY_5", "AIzaSy_KEY_5_THAY_O_DAY"),
+    "AQ.Ab8RN6LAu14G0gb8ntVPkeG2tbU2yR8dEDu3F63AIGznFGcgcA",
+    "AQ.Ab8RN6IW7njatVnaw7Ml4mkM1xG1KEfnJ5cxM-VNqJMSdQsXIQ",
+    "AQ.Ab8RN6LO8xRuz1IesGqR48Y10wTW02AtovsmfgV_o8-y97JSqQ",
+    "AQ.Ab8RN6KFz4jALbfPCmM0jkggHl2t7HeZpvRdbeiRzW0MKwQ4aA",
+    "AQ.Ab8RN6JJfSyC8WB1C8c8IgA5tFxDoLgeVQz08g26r_s0MFzXMA"
 ]
 
-# Ưu tiên lấy từ st.secrets nếu có cấu hình
+# Ưu tiên lấy từ st.secrets nếu có cấu hình trên Streamlit Cloud
 try:
     if "GEMINI_API_KEY_1" in st.secrets:
         API_KEYS_POOL = [
-            st.secrets.get("GEMINI_API_KEY_1", ""),
-            st.secrets.get("GEMINI_API_KEY_2", ""),
-            st.secrets.get("GEMINI_API_KEY_3", ""),
-            st.secrets.get("GEMINI_API_KEY_4", ""),
-            st.secrets.get("GEMINI_API_KEY_5", ""),
+            st.secrets.get("GEMINI_API_KEY_1", API_KEYS_POOL[0]),
+            st.secrets.get("GEMINI_API_KEY_2", API_KEYS_POOL[1]),
+            st.secrets.get("GEMINI_API_KEY_3", API_KEYS_POOL[2]),
+            st.secrets.get("GEMINI_API_KEY_4", API_KEYS_POOL[3]),
+            st.secrets.get("GEMINI_API_KEY_5", API_KEYS_POOL[4]),
         ]
 except Exception:
     pass
@@ -268,7 +268,6 @@ with tab_chat:
 
         with st.chat_message("assistant"):
             try:
-                # Cơ chế tự động thử xoay vòng key nếu gặp lỗi 429 hoặc 401
                 success = False
                 bot_reply = ""
                 for attempt in range(len(API_KEYS_POOL)):
@@ -281,7 +280,6 @@ with tab_chat:
                         success = True
                         break
                     except Exception as api_err:
-                        # Kiểm tra nếu lỗi do hết hạn mức (429) hoặc xác thực (401)
                         err_str = str(api_err)
                         if "429" in err_str or "401" in err_str or "RESOURCE_EXHAUSTED" in err_str or "UNAUTHENTICATED" in err_str:
                             rotate_to_next_key()
