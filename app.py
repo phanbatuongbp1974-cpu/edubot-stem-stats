@@ -71,7 +71,6 @@ st.markdown("""
 if "key_index" not in st.session_state:
     st.session_state.key_index = 0
 
-# Danh sách 5 API Key bạn đã cung cấp
 API_KEYS_POOL = [
     "AQ.Ab8RN6LAu14G0gb8ntVPkeG2tbU2yR8dEDu3F63AIGznFGcgcA",
     "AQ.Ab8RN6IW7njatVnaw7Ml4mkM1xG1KEfnJ5cxM-VNqJMSdQsXIQ",
@@ -80,7 +79,6 @@ API_KEYS_POOL = [
     "AQ.Ab8RN6JJfSyC8WB1C8c8IgA5tFxDoLgeVQz08g26r_s0MFzXMA"
 ]
 
-# Ưu tiên lấy từ st.secrets nếu có cấu hình trên Streamlit Cloud
 try:
     if "GEMINI_API_KEY_1" in st.secrets:
         API_KEYS_POOL = [
@@ -108,7 +106,6 @@ if "genai_client" not in st.session_state:
 
 client = st.session_state.genai_client
 
-# Khởi tạo các State lưu trữ dữ liệu
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "uploaded_sources" not in st.session_state:
@@ -206,7 +203,7 @@ QUY TẮC SƯ PHẠM BẮT BUỘC:
 
 if "chat_session" not in st.session_state:
     st.session_state.chat_session = client.chats.create(
-        model="gemini-1.5-flash",
+        model="gemini-2.5-flash",
         config=types.GenerateContentConfig(
             system_instruction=system_instruction,
             temperature=0.3
@@ -321,7 +318,7 @@ with tab_stat_viz:
                 
                 with st.spinner("AI đang phân tích ý nghĩa thống kê..."):
                     ai_stat_analysis = client.models.generate_content(
-                        model='gemini-1.5-flash',
+                        model='gemini-2.5-flash',
                         contents=f"Dữ liệu: {data_list}. Mean={mean_val:.2f}, Median={median_val:.2f}, Std={std_val:.2f}. Nhận xét khoa học."
                     )
                     st.markdown("### 🤖 Nhận định chuyên gia:")
@@ -338,7 +335,7 @@ with tab_analytics:
             with st.spinner("Đang phân tích dữ liệu..."):
                 chat_history_summary = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
                 analysis_res = client.models.generate_content(
-                    model='gemini-1.5-flash',
+                    model='gemini-2.5-flash',
                     contents=f"Phân tích điểm mạnh/yếu môn {mon_hoc} dựa trên lịch sử: {chat_history_summary}"
                 )
                 st.markdown(f"<div class='analytics-box'>{analysis_res.text}</div>", unsafe_allow_html=True)
@@ -354,7 +351,7 @@ with tab_time:
             st.markdown(f"<div class='countdown-card'><h2>🚨 Còn lại {days_left} ngày</h2><p><b>{exam_name}</b></p></div>", unsafe_allow_html=True)
             with st.spinner("Đang thiết lập lịch ôn tập..."):
                 schedule_res = client.models.generate_content(
-                    model='gemini-1.5-flash',
+                    model='gemini-2.5-flash',
                     contents=f"Thiết kế lịch ôn Spaced Repetition môn {mon_hoc} trong {days_left} ngày."
                 )
                 st.markdown(schedule_res.text)
@@ -368,7 +365,7 @@ with tab_research:
         if research_query:
             with st.spinner("Đang tìm kiếm thông tin..."):
                 grounding_res = client.models.generate_content(
-                    model='gemini-1.5-flash',
+                    model='gemini-2.5-flash',
                     contents=f"Tìm kiếm thông tin uy tín về: '{research_query}' cho môn {mon_hoc}.",
                     config=types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())])
                 )
