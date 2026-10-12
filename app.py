@@ -33,14 +33,14 @@ st.markdown("""
 MODEL_NAME = "gemini-3.8-flash"
 
 # =====================================================================
-# 2. HỆ THỐNG 10 API KEY XOAY VÒNG CHẠY NGẦM
+# 2. HỆ THỐNG 20 API KEY XOAY VÒNG CHẠY NGẦM (KHÔNG THÔNG BÁO)
 # =====================================================================
 if "key_index" not in st.session_state:
     st.session_state.key_index = 0
 
 try:
     API_KEYS_POOL = [
-        st.secrets.get(f"GEMINI_API_KEY_{i}", "") for i in range(1, 11)
+        st.secrets.get(f"GEMINI_API_KEY_{i}", "") for i in range(1, 21)
     ]
     API_KEYS_POOL = [k for k in API_KEYS_POOL if k]
 except Exception:
@@ -95,7 +95,7 @@ if "stats_exercises" not in st.session_state:
 st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>🎓 EduBot STEM & Statistics</h1>", unsafe_allow_html=True)
 
 # =====================================================================
-# 3. SIDEBAR CẤU HÌNH
+# 3. SIDEBAR CẤU HÌNH HỌC TẬP
 # =====================================================================
 with st.sidebar:
     st.markdown("### ⚙️ Cấu Hình Học Tập")
@@ -141,7 +141,7 @@ with st.sidebar:
         for idx, src in enumerate(st.session_state.uploaded_sources):
             c1, c2 = st.columns([3, 1])
             with c1:
-                if st.checkbox(f"📎 {src['name']}", value=True, key=f"chk_{idx}"):
+                if st.checkbox(f"📎 {src['name']}", value=True, key=f"chk_{idx}").bool if hasattr(st.checkbox(f"📎 {src['name']}", value=True, key=f"chk_{idx}"), 'bool') else True:
                     selected_sources_for_chat.append(src['data'])
             with c2:
                 if st.button("❌", key=f"del_{idx}"):
