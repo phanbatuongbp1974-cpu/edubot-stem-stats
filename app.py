@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 # =====================================================================
 # 1. CẤU HÌNH GIAO DIỆN WEB & CSS
 # =====================================================================
-st.set_page_config(page_title="EduBot STEM & Statistics", page_icon="🎓", layout="wide")
+st.set_page_config(page_title="EduBot STEM & Statistics - THCS", page_icon="🎓", layout="wide")
 
 st.markdown("""
 <style>
@@ -33,7 +33,7 @@ st.markdown("""
 MODEL_NAME = "gemini-3.8-flash"
 
 # =====================================================================
-# 2. HỆ THỐNG 20 API KEY XOAY VÒNG CHẠY NGẦM (KHÔNG THÔNG BÁO)
+# 2. HỆ THỐNG 20 API KEY XOAY VÒNG CHẠY NGẦM
 # =====================================================================
 if "key_index" not in st.session_state:
     st.session_state.key_index = 0
@@ -63,7 +63,7 @@ def rotate_to_next_key():
     if "chat_session" in st.session_state:
         st.session_state.chat_session = st.session_state.genai_client.chats.create(
             model=MODEL_NAME,
-            config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.3)
+            config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.2)
         )
 
 def safe_generate_content(contents, config=None, model=MODEL_NAME):
@@ -92,30 +92,32 @@ if "stats_questions" not in st.session_state:
 if "stats_exercises" not in st.session_state:
     st.session_state.stats_exercises = 0
 
-st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>🎓 EduBot STEM & Statistics</h1>", unsafe_allow_html=True)
+st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>🎓 EduBot STEM & Statistics (Cấp 2 - THCS)</h1>", unsafe_allow_html=True)
 
 # =====================================================================
-# 3. SIDEBAR CẤU HÌNH HỌC TẬP
+# 3. SIDEBAR CẤU HÌNH HỌC TẬP (CHUYÊN SÂU THCS)
 # =====================================================================
 with st.sidebar:
-    st.markdown("### ⚙️ Cấu Hình Học Tập")
-    bac_hoc = st.selectbox("Chọn bậc học:", ["Cấp 1 (Tiểu học)", "Cấp 2 (THCS)", "Cấp 3 (THPT)"])
+    st.markdown("### ⚙️ Cấu Hình Cấp 2 (THCS)")
+    bac_hoc = "Cấp 2 (THCS)"
+    khoi_lop = st.selectbox("Chọn khối lớp:", ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"])
     
-    if bac_hoc == "Cấp 1 (Tiểu học)":
-        khoi_lop = st.selectbox("Chọn khối lớp:", ["Lớp 1", "Lớp 2", "Lớp 3", "Lớp 4", "Lớp 5"])
-        danh_sach_mon = ["Tiếng Việt", "Toán", "Đạo đức", "Ngoại ngữ 1", "Tự nhiên và Xã hội", "Khoa học (Lớp 4-5)", "Tin học"]
-    elif bac_hoc == "Cấp 2 (THCS)":
-        khoi_lop = st.selectbox("Chọn khối lớp:", ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"])
-        danh_sach_mon = ["Ngữ văn", "Toán", "Vật lý", "Hóa học", "Sinh học", "Lịch sử", "Địa lý", "Tin học", "Thống kê & Xác suất cơ bản"]
-    else:
-        khoi_lop = st.selectbox("Chọn khối lớp:", ["Lớp 10", "Lớp 11", "Lớp 12", "Ôn thi THPT Quốc gia"])
-        danh_sach_mon = ["Ngữ văn", "Toán", "Vật lý", "Hóa học", "Sinh học", "Lịch sử", "Địa lý", "Thống kê toán học & Khoa học dữ liệu", "Tin học"]
-        
+    danh_sach_mon = [
+        "Toán học", 
+        "Ngữ văn", 
+        "Vật lý", 
+        "Hóa học", 
+        "Sinh học", 
+        "Khoa học tự nhiên (STEM)", 
+        "Lịch sử & Địa lý", 
+        "Tin học", 
+        "Thống kê & Xác suất"
+    ]
     mon_hoc = st.selectbox("Chọn môn học:", danh_sach_mon)
     st.divider()
 
     st.markdown("### 📚 Thư Viện Tài Liệu")
-    uploaded_file = st.file_uploader("📁 Tải tệp hỗ trợ:", type=None)
+    uploaded_file = st.file_uploader("📁 Tải tệp hỗ trợ bài học:", type=None)
     if uploaded_file is not None and st.session_state.genai_client:
         file_name = uploaded_file.name
         if file_name not in [s['name'] for s in st.session_state.uploaded_sources]:
@@ -137,11 +139,11 @@ with st.sidebar:
 
     selected_sources_for_chat = []
     if st.session_state.uploaded_sources:
-        st.caption("Tài liệu đính kèm:")
+        st.caption("Tài liệu đính kèm hoạt động:")
         for idx, src in enumerate(st.session_state.uploaded_sources):
             c1, c2 = st.columns([3, 1])
             with c1:
-                if st.checkbox(f"📎 {src['name']}", value=True, key=f"chk_{idx}").bool if hasattr(st.checkbox(f"📎 {src['name']}", value=True, key=f"chk_{idx}"), 'bool') else True:
+                if st.checkbox(f"📎 {src['name']}", value=True, key=f"chk_{idx}"):
                     selected_sources_for_chat.append(src['data'])
             with c2:
                 if st.button("❌", key=f"del_{idx}"):
@@ -159,19 +161,23 @@ if "last_config" not in st.session_state or st.session_state.last_config != curr
     st.session_state.last_config = current_config
     st.session_state.pop("chat_session", None)
 
+# Hướng dẫn chi tiết, chuyên sâu tuyệt đối cho cấp THCS
 system_instruction = f"""
-Bạn là Gia sư Giáo dục & Chuyên gia Thống kê - STEM tại Việt Nam. Trình độ: {bac_hoc} - {khoi_lop} - Môn: {mon_hoc}.
-QUY TẮC:
-1. Chỉ giải đáp kiến thức học tập, toán học, thống kê, STEM thuộc môn {mon_hoc}.
-2. Hướng dẫn tư duy từng bước ngắn (Step-by-step), không cho đáp án ngay.
-3. Dùng chuẩn LaTeX ($...$ hoặc $$...$$) cho số liệu/công thức toán.
-4. Luôn kết thúc bằng 1 câu hỏi gợi mở.
+Bạn là Chuyên gia Giáo dục & Gia sư STEM - Thống kê hàng đầu chuyên sâu cho bậc Cấp 2 (THCS) tại Việt Nam.
+Cấu hình hiện tại: {bac_hoc} - {khoi_lop} - Môn: {mon_hoc}.
+
+QUY TẮC CHUYÊN MÔN VÀ SƯ PHẠM ĐẶC BIỆT:
+1. ĐỘ CHÍNH XÁC VÀ CHI TIẾT CAO: Mọi giải thích lý thuyết, định lý, công thức, bài toán toán học, vật lý, hóa học, sinh học hay thống kê phải cực kỳ chính xác theo chuẩn chương trình giáo dục phổ thông mới (Sách giáo khoa Bộ GD&ĐT), phân tích sâu sắc, rõ ràng từng bước bản chất hiện tượng hoặc công thức.
+2. PHƯƠNG PHÁP SƯ PHẠM DẪN DẮT: Không đưa ngay đáp án cuối cùng. Hãy phân tích đề bài, hướng dẫn tư duy từng bước logic (Step-by-step), giải thích tường tận *vì sao lại làm như vậy*, giúp học sinh hiểu bản chất thay vì học vẹt.
+3. CHUẨN TRÌNH BÀY: Bắt buộc sử dụng ký hiệu LaTeX tiêu chuẩn ($...$ hoặc $$...$$) cho mọi biểu thức, công thức, số liệu, phân số hoặc ký hiệu toán học/thống kê.
+4. TÍNH CHUYÊN SÂU THEO KHỐI LỚP: Bám sát chuẩn kiến thức trọng tâm của {khoi_lop}, kết hợp các ví dụ thực tiễn sinh động chuẩn lứa tuổi THCS.
+5. Luôn kết thúc phản hồi bằng một câu hỏi gợi mở hoặc bài toán nhỏ để học sinh tự tư duy tiếp.
 """
 
 if st.session_state.genai_client and "chat_session" not in st.session_state:
     st.session_state.chat_session = st.session_state.genai_client.chats.create(
         model=MODEL_NAME,
-        config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.3)
+        config=types.GenerateContentConfig(system_instruction=system_instruction, temperature=0.2)
     )
 
 # =====================================================================
@@ -188,11 +194,11 @@ with tab_chat:
         q_cols = st.columns(3)
         quick_prompt = None
         with q_cols[0]:
-            if st.button("📝 Tóm tắt lý thuyết"): quick_prompt = f"Tóm tắt kiến thức cốt lõi môn {mon_hoc} ({khoi_lop})."
+            if st.button("📝 Tóm tắt lý thuyết chi tiết"): quick_prompt = f"Hãy tóm tắt chi tiết, đầy đủ kiến thức trọng tâm, công thức và bản chất của chủ đề học tập trong môn {mon_hoc} ({khoi_lop})."
         with q_cols[1]:
-            if st.button("🎯 Tạo trắc nghiệm"): quick_prompt = f"Tạo 3 câu hỏi trắc nghiệm môn {mon_hoc} ({khoi_lop})."
+            if st.button("🎯 Tạo bài tập rèn luyện"): quick_prompt = f"Hãy tạo 2 bài tập tự luận có kèm hướng dẫn giải chi tiết từng bước bám sát môn {mon_hoc} ({khoi_lop})."
         with q_cols[2]:
-            if st.button("💡 Giải thích công thức"): quick_prompt = f"Giải thích ý nghĩa công thức môn {mon_hoc}."
+            if st.button("💡 Giải thích bản chất"): quick_prompt = f"Hãy phân tích và giải thích cặn kẽ bản chất khoa học hoặc phương pháp giải cốt lõi trong môn {mon_hoc} ({khoi_lop})."
 
         st.divider()
 
@@ -200,7 +206,7 @@ with tab_chat:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"], unsafe_allow_html=True)
 
-        prompt_input = st.chat_input("Nhập câu hỏi học tập...")
+        prompt_input = st.chat_input("Nhập câu hỏi bài tập hoặc thắc mắc học tập...")
         user_input = quick_prompt if quick_prompt else prompt_input
 
         if user_input:
@@ -239,50 +245,52 @@ with tab_chat:
                     st.error(f"Lỗi kết nối: {e}")
 
 with tab_stat_viz:
-    st.subheader("📊 Trực Quan Hóa Dữ Liệu")
-    data_str = st.text_input("Dữ liệu mẫu:", "12, 15, 18, 20, 22, 25, 28, 30, 35, 40")
-    if st.button("Phân tích thống kê"):
+    st.subheader("📊 Trực Quan Hóa Dữ Liệu Thống Kê THCS")
+    data_str = st.text_input("Nhập dãy số liệu mẫu (cách nhau bởi dấu phẩy):", "5, 7, 8, 9, 10, 6, 8, 7, 9, 8")
+    if st.button("Phân tích thống kê chi tiết"):
         try:
             arr = [float(x.strip()) for x in data_str.split(",") if x.strip()]
             s = pd.Series(arr)
             c1, c2, c3, c4 = st.columns(4)
-            c1.metric("Mean", f"{s.mean():.2f}")
-            c2.metric("Median", f"{s.median():.2f}")
-            c3.metric("Std", f"{s.std(ddof=1):.2f}")
-            c4.metric("Var", f"{s.var(ddof=1):.2f}")
+            c1.metric("Trung bình (Mean)", f"{s.mean():.2f}")
+            c2.metric("Trung vị (Median)", f"{s.median():.2f}")
+            c3.metric("Độ lệch chuẩn", f"{s.std(ddof=1):.2f}")
+            c4.metric("Phương sai", f"{s.var(ddof=1):.2f}")
             fig, (a1, a2) = plt.subplots(1, 2, figsize=(10, 4))
             a1.hist(arr, bins='auto', color='#2563eb', edgecolor='white')
+            a1.set_title("Biểu đồ Tần suất")
             a2.boxplot(arr, patch_artist=True, boxprops=dict(facecolor="#93c5fd"))
+            a2.set_title("Biểu đồ Hộp")
             st.pyplot(fig)
         except Exception as e:
-            st.error(f"Lỗi: {e}")
+            st.error(f"Lỗi xử lý dữ liệu: {e}")
 
 with tab_analytics:
-    st.subheader("📈 Phân Tích Năng Lực")
+    st.subheader("📈 Phân Tích Năng Lực Học Tập")
     if len(st.session_state.messages) < 2:
-        st.info("Hãy trò chuyện thêm với EduBot để phân tích.")
+        st.info("Hãy trao đổi với EduBot ở tab Trò chuyện học tập để hệ thống ghi nhận dữ liệu đánh giá.")
     else:
-        if st.button("Phân tích ngay"):
+        if st.button("Đánh giá năng lực chuyên sâu"):
             history = "\n".join([f"{m['role']}: {m['content']}" for m in st.session_state.messages])
-            res = safe_generate_content(contents=f"Phân tích năng lực môn {mon_hoc} dựa trên lịch sử: {history}")
+            res = safe_generate_content(contents=f"Đánh giá chi tiết năng lực, điểm mạnh điểm yếu môn {mon_hoc} ({khoi_lop}) dựa trên lịch sử trao đổi: {history}")
             st.markdown(f"<div class='analytics-box'>{res.text}</div>", unsafe_allow_html=True)
 
 with tab_time:
-    st.subheader("⏰ Quản Lý Thời Gian")
-    exam_name = st.text_input("Tên kỳ thi:", "Kỳ thi học kỳ")
-    exam_date = st.date_input("Ngày thi:", datetime.date.today() + datetime.timedelta(days=30))
-    if st.button("Tính đếm ngược"):
+    st.subheader("⏰ Lập Kế Hoạch Ôn Tập Khoa Học")
+    exam_name = st.text_input("Tên kỳ thi / Kiểm tra:", "Kiểm tra học kỳ")
+    exam_date = st.date_input("Ngày diễn ra:", datetime.date.today() + datetime.timedelta(days=15))
+    if st.button("Tạo lộ trình ôn tập chi tiết"):
         days = (exam_date - datetime.date.today()).days
         st.markdown(f"<div class='countdown-card'><h2>🚨 Còn lại {days} ngày</h2><p><b>{exam_name}</b></p></div>", unsafe_allow_html=True)
-        res = safe_generate_content(contents=f"Lập lịch ôn Spaced Repetition môn {mon_hoc} trong {days} ngày.")
+        res = safe_generate_content(contents=f"Lập lộ trình ôn tập chi tiết từng ngày theo phương pháp Spaced Repetition cho môn {mon_hoc} ({khoi_lop}) trong thời gian {days} ngày.")
         st.markdown(res.text)
 
 with tab_research:
-    st.subheader("🔍 Tra Cứu Google Search Grounding")
-    query = st.text_input("Chủ đề tra cứu:")
-    if st.button("Truy vấn") and query:
+    st.subheader("🔍 Tra Cứu Kiến Thức Học Thuật")
+    query = st.text_input("Nhập chủ đề khoa học hoặc toán học cần tra cứu:")
+    if st.button("Truy vấn thông tin uy tín") and query:
         res = safe_generate_content(
-            contents=f"Tìm kiếm thông tin về: '{query}' cho môn {mon_hoc}.",
+            contents=f"Tìm kiếm và giải thích chi tiết về: '{query}' phục vụ chương trình học môn {mon_hoc} ({khoi_lop}).",
             config=types.GenerateContentConfig(tools=[{"google_search": {}}])
         )
         st.markdown(res.text)
