@@ -23,6 +23,7 @@ st.markdown("""
     .metric-val { font-size: 28px; font-weight: 800; color: #2563eb; }
     .metric-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 4px; opacity: 0.8; }
     .analytics-box { border-left: 5px solid #2563eb; border: 1px solid rgba(128, 128, 128, 0.2); padding: 20px; border-radius: 4px 16px 16px 4px; margin-bottom: 15px; }
+    .lesson-card { border: 1px solid rgba(128, 128, 128, 0.2); padding: 20px; border-radius: 12px; margin-bottom: 15px; background-color: rgba(37, 99, 235, 0.02); }
     .countdown-card { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); color: white !important; padding: 24px; border-radius: 16px; text-align: center; margin-bottom: 20px; }
     .countdown-card h2 { color: white !important; margin: 0; font-weight: 800;}
     .countdown-card p { color: #bfdbfe !important; margin-top: 8px; font-size: 14px;}
@@ -89,13 +90,57 @@ if "uploaded_sources" not in st.session_state:
     st.session_state.uploaded_sources = []
 if "stats_questions" not in st.session_state:
     st.session_state.stats_questions = 0
-if "stats_exercises" not in st.session_state:
-    st.session_state.stats_exercises = 0
 
 st.markdown("<h1 style='text-align: center; margin-bottom: 30px;'>🎓 EduBot STEM & Statistics (Cấp 2 - THCS)</h1>", unsafe_allow_html=True)
 
 # =====================================================================
-# 3. SIDEBAR CẤU HÌNH HỌC TẬP (CHUYÊN SÂU THCS)
+# 3. KHO BÀI HỌC CHUẨN (TÍCH HỢP TỪ DỮ LIỆU TĨNH)
+# =====================================================================
+KHO_BAI_HOC_CHUA_NH = {
+    "Lớp 6": {
+        "Toán học": [
+            {"title": "Bài 1: Tập hợp các số tự nhiên", "content": "Tập hợp $\\mathbb{N} = \\{0, 1, 2, 3, ...\\}$. Các phép tính cộng, trừ, nhân, chia, lũy thừa với số mũ tự nhiên."},
+            {"title": "Bài 2: Tính chia hết trong tập hợp các số tự nhiên", "content": "Dấu hiệu chia hết cho 2, 3, 5, 9. Ước chung lớn nhất (ƯCLN) và Bội chung nhỏ nhất (BCNN)."}
+        ],
+        "Thống kê & Xác suất": [
+            {"title": "Bài 1: Thu thập và phân loại dữ liệu", "content": "Dữ liệu thống kê, bảng thống kê số liệu, biểu đồ tranh, biểu đồ cột."},
+            {"title": "Bài 2: Phân tích và xử lý dữ liệu thống kê", "content": "Tìm kiếm điểm số hợp lý, tần số của một giá trị trong bảng dữ liệu."}
+        ]
+    },
+    "Lớp 7": {
+        "Toán học": [
+            {"title": "Bài 1: Số hữu tỉ", "content": "Khái niệm số hữu tỉ, các phép tính cộng, trừ, nhân, chia số hữu tỉ. Giá trị tuyệt đối của một số hữu tỉ."},
+            {"title": "Bài 2: Biểu thức đại số", "content": "Đơn thức, đa thức một biến, nghiệm của đa thức một biến."}
+        ],
+        "Thống kê & Xác suất": [
+            {"title": "Bài 1: Thu thập và biểu diễn dữ liệu", "content": "Biểu đồ hình quạt tròn, biểu đồ đoạn thẳng mô tả dữ liệu thống kê."},
+            {"title": "Bài 2: Làm quen với biến cố ngẫu nhiên", "content": "Xác suất thực nghiệm của một biến cố trong trò chơi đơn giản."}
+        ]
+    },
+    "Lớp 8": {
+        "Toán học": [
+            {"title": "Bài 1: Phép nhân và chia các đa thức", "content": "Nhân đơn thức với đa thức, nhân đa thức với đa thức. Các hằng đẳng thức đáng nhớ."},
+            {"title": "Bài 2: Phân thức đại số", "content": "Tính chất cơ bản của phân thức, các phép tính cộng, trừ, nhân, chia phân thức đại số."}
+        ],
+        "Thống kê & Xác suất": [
+            {"title": "Bài 1: Phân tích và biểu diễn dữ liệu", "content": "Biểu đồ tần số, tần số tương đối, biểu đồ hình quạt tròn cho dữ liệu định tính và định lượng."},
+            {"title": "Bài 2: Xác suất của biến cố", "content": "Tính xác suất của biến cố trong các thí nghiệm ngẫu nhiên đơn giản."}
+        ]
+    },
+    "Lớp 9": {
+        "Toán học": [
+            {"title": "Bài 1: Phương trình và hệ phương trình bậc nhất", "content": "Phương trình bậc nhất hai ẩn, hệ hai phương trình bậc nhất hai ẩn và phương pháp giải."},
+            {"title": "Bài 2: Hàm số $y = ax^2 (a \\neq 0)$ và Phương trình bậc hai", "content": "Đồ thị hàm số bậc hai, công thức nghiệm thu gọn của phương trình bậc hai, hệ thức Vi-ét."}
+        ],
+        "Thống kê & Xác suất": [
+            {"title": "Bài 1: Bảng tần số ghép nhóm và tần số tương đối ghép nhóm", "content": "Cách lập bảng tần số ghép nhóm, biểu đồ tần số tương đối ghép nhóm dạng cột/đoạn thẳng."},
+            {"title": "Bài 2: Các số đặc trưng đo mức độ phân tán", "content": "Khoảng biến thiên, khoảng tứ phân vị, phương sai và độ lệch chuẩn của mẫu số liệu ghép nhóm."}
+        ]
+    }
+}
+
+# =====================================================================
+# 4. SIDEBAR CẤU HÌNH HỌC TẬP (CHUYÊN SÂU THCS)
 # =====================================================================
 with st.sidebar:
     st.markdown("### ⚙️ Cấu Hình Cấp 2 (THCS)")
@@ -167,11 +212,10 @@ Bạn là Chuyên gia Giáo dục & Gia sư STEM - Thống kê hàng đầu chuy
 Cấu hình hiện tại: {bac_hoc} - {khoi_lop} - Môn: {mon_hoc}.
 
 QUY TẮC CHUYÊN MÔN VÀ SƯ PHẠM ĐẶC BIỆT:
-1. ĐỘ CHÍNH XÁC VÀ CHI TIẾT CAO: Mọi giải thích lý thuyết, định lý, công thức, bài toán toán học, vật lý, hóa học, sinh học hay thống kê phải cực kỳ chính xác theo chuẩn chương trình giáo dục phổ thông mới (Sách giáo khoa Bộ GD&ĐT), phân tích sâu sắc, rõ ràng từng bước bản chất hiện tượng hoặc công thức.
-2. PHƯƠNG PHÁP SƯ PHẠM DẪN DẮT: Không đưa ngay đáp án cuối cùng. Hãy phân tích đề bài, hướng dẫn tư duy từng bước logic (Step-by-step), giải thích tường tận *vì sao lại làm như vậy*, giúp học sinh hiểu bản chất thay vì học vẹt.
-3. CHUẨN TRÌNH BÀY: Bắt buộc sử dụng ký hiệu LaTeX tiêu chuẩn ($...$ hoặc $$...$$) cho mọi biểu thức, công thức, số liệu, phân số hoặc ký hiệu toán học/thống kê.
-4. TÍNH CHUYÊN SÂU THEO KHỐI LỚP: Bám sát chuẩn kiến thức trọng tâm của {khoi_lop}, kết hợp các ví dụ thực tiễn sinh động chuẩn lứa tuổi THCS.
-5. Luôn kết thúc phản hồi bằng một câu hỏi gợi mở hoặc bài toán nhỏ để học sinh tự tư duy tiếp.
+1. ĐỘ CHÍNH XÁC VÀ CHI TIẾT CAO: Mọi giải thích lý thuyết, định lý, công thức, bài toán toán học, vật lý, hóa học, sinh học hay thống kê phải cực kỳ chính xác theo chuẩn chương trình giáo dục phổ thông mới (Sách giáo khoa Bộ GD&ĐT).
+2. PHƯƠNG PHÁP SƯ PHẠM DẪN DẮT: Không đưa ngay đáp án cuối cùng. Hãy phân tích đề bài, hướng dẫn tư duy từng bước logic (Step-by-step).
+3. CHUẨN TRÌNH BÀY: Bắt buộc sử dụng ký hiệu LaTeX tiêu chuẩn ($...$ hoặc $$...$$) cho mọi biểu thức, công thức, số liệu.
+4. Luôn kết thúc phản hồi bằng một câu hỏi gợi mở hoặc bài toán nhỏ để học sinh tự tư duy tiếp.
 """
 
 if st.session_state.genai_client and "chat_session" not in st.session_state:
@@ -181,10 +225,10 @@ if st.session_state.genai_client and "chat_session" not in st.session_state:
     )
 
 # =====================================================================
-# 4. GIAO DIỆN TABS CHÍNH
+# 5. GIAO DIỆN TABS CHÍNH (TÍCH HỢP KHO BÀI HỌC CHUẨN)
 # =====================================================================
-tab_chat, tab_stat_viz, tab_analytics, tab_time, tab_research = st.tabs([
-    "💬 Trò Chuyện Học Tập", "📊 Thống Kê & STEM", "📈 Năng Lực", "⏰ Thời Gian", "🔍 Tra Cứu"
+tab_chat, tab_lessons, tab_stat_viz, tab_analytics, tab_time, tab_research = st.tabs([
+    "💬 Trò Chuyện Học Tập", "📖 Kho Bài Học Chuẩn", "📊 Thống Kê & STEM", "📈 Năng Lực", "⏰ Thời Gian", "🔍 Tra Cứu"
 ])
 
 with tab_chat:
@@ -243,6 +287,23 @@ with tab_chat:
                         st.error("⚠️ Hệ thống quá tải hoặc hết hạn mức tất cả các Key, vui lòng thử lại sau.")
                 except Exception as e:
                     st.error(f"Lỗi kết nối: {e}")
+
+with tab_lessons:
+    st.subheader(f"📖 Kho Bài Học Chuẩn Theo Chương Trình ({khoi_lop})")
+    lessons_data = KHO_BAI_HOC_CHUA_NH.get(khoi_lop, {})
+    if not lessons_data:
+        st.info("Đang cập nhật kho bài học cho khối lớp này.")
+    else:
+        for subj, list_les in lessons_data.items():
+            st.markdown(f"### 📌 Môn: {subj}")
+            for les in list_les:
+                st.markdown(f"""
+                <div class="lesson-card">
+                    <h4>{les['title']}</h4>
+                    <p>{les['content']}</p>
+                </div>
+                """, unsafe_allow_html=True)
+            st.divider()
 
 with tab_stat_viz:
     st.subheader("📊 Trực Quan Hóa Dữ Liệu Thống Kê THCS")
